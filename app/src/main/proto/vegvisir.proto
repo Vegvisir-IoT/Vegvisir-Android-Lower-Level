@@ -14,9 +14,10 @@ message VegvisirProtocolMessage {
 }
 
 message Payload {
+  string type = 1;
   oneof content_oneof {
-    VegvisirProtocolMessage message = 1;
-    string info = 2;
+    VegvisirProtocolMessage message = 2;
+    string info = 3;
   }
 }
 
@@ -59,7 +60,7 @@ message LocationServiceNotAvailableException {
   string error_message = 1;
 }
 
-// Connection
+// EndPointConnection
 message Connection {
   Identifier remote_id = 1;
   Timestamp connected_time = 2;

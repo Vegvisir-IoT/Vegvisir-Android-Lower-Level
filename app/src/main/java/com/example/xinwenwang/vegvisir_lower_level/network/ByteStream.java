@@ -1,9 +1,8 @@
-package com.example.xinwenwang.vegvisir_lower_level;
+package com.example.xinwenwang.vegvisir_lower_level.network;
 
 import android.content.Context;
 import android.support.annotation.NonNull;
 import android.util.Log;
-import android.util.Pair;
 
 import com.google.android.gms.nearby.Nearby;
 import com.google.android.gms.nearby.connection.AdvertisingOptions;
@@ -37,19 +36,16 @@ public class ByteStream {
 
     private static final Strategy STRATEGY = Strategy.P2P_STAR;
 
-    private BlockingDeque<Pair<String, com.vegvisir.lower.datatype.proto.Payload>> sendQueue;
-
-    private BlockingDeque<com.vegvisir.lower.datatype.proto.Payload> recvQueue;
-
     private Context appContext;
 
     private ConnectionsClient client;
 
     private String advisingID;
 
-    private HashMap<String, com.example.xinwenwang.vegvisir_lower_level.Connection> connections;
+    /* EndPointConnection mapping form id to connection */
+    private HashMap<String, EndPointConnection> connections;
 
-    private BlockingDeque<com.example.xinwenwang.vegvisir_lower_level.Connection> establishedConnection;
+    private BlockingDeque<EndPointConnection> establishedConnection;
 
     private Object lock;
 
@@ -95,41 +91,49 @@ public class ByteStream {
     private final ConnectionLifecycleCallback connectionLifecycleCallback = new ConnectionLifecycleCallback() {
         @Override
         public void onConnectionInitiated(@NonNull String endPoint, @NonNull ConnectionInfo connectionInfo) {
-            synchronized (lock) {
-                if (activeEndPoint == null) {
-                    client.acceptConnection(endPoint, payloadCallback);
-                } else {
-                    client.rejectConnection(endPoint);
+            if (activeEndPoint != null)
+                client.rejectConnection(endPoint);
+            else {
+                synchronized (lock) {
+                    if (activeEndPoint == null) {
+                        client.acceptConnection(endPoint, payloadCallback);
+                    } else {
+                        client.rejectConnection(endPoint);
+                    }
                 }
             }
+
         }
 
         @Override
         public void onConnectionResult(@NonNull String endPoint, @NonNull ConnectionResolution connectionResolution) {
+
+            if (activeEndPoint != null)
+                return;
+
             synchronized (lock) {
-                if (connectionResolution.getStatus().isSuccess()) {
-                    activeEndPoint = endPoint;
-                    client.stopDiscovery();
-                    client.stopAdvertising();
-                    connections.putIfAbsent(endPoint, new com.example.xinwenwang.vegvisir_lower_level.Connection(endPoint,
-                            appContext,
-                            self));
-                    connections.get(endPoint).setConnected(true);
-                    establishedConnection.push(connections.get(endPoint));
-                } else {
-                    Log.i("Vegivsir-Connection", "connection failed");
+                if (activeEndPoint == null) {
+                    if (connectionResolution.getStatus().isSuccess()) {
+                        activeEndPoint = endPoint;
+                        client.stopDiscovery();
+                        client.stopAdvertising();
+                        connections.putIfAbsent(endPoint, new EndPointConnection(endPoint,
+                                appContext,
+                                self));
+                        connections.get(endPoint).setConnected(true);
+                        establishedConnection.push(connections.get(endPoint));
+                    } else {
+                        Log.i("Vegivsir-EndPointConnection", "connection failed");
+                    }
                 }
             }
         }
 
         @Override
         public void onDisconnected(@NonNull String endPoint) {
-            synchronized (lock) {
-                activeEndPoint = null;
-                connections.get(endPoint).setConnected(false);
-                startAdvertising();
-                startDiscovering();
-            }
+            activeEndPoint = null;
+            connections.get(endPoint).setConnected(false);
+            start();
         }
     };
 
@@ -144,7 +148,7 @@ public class ByteStream {
         self = this;
     }
 
-    public Connection getConnectionByID(String id) {
+    public EndPointConnection getConnectionByID(String id) {
         return connections.get(id);
     }
 
@@ -188,7 +192,8 @@ public class ByteStream {
 
     public Task<Void> send(String dest, com.vegvisir.lower.datatype.proto.Payload payload) {
         InputStream stream = new ByteArrayInputStream(payload.toByteArray());
-        return client.sendPayload(dest, Payload.fromStream(stream));
+        Task<Void> task = client.sendPayload(dest, Payload.fromStream(stream));
+        return task;
     }
 
     public void recv(String remoteId, Payload payload) {
@@ -202,7 +207,7 @@ public class ByteStream {
         }
     }
 
-    public com.example.xinwenwang.vegvisir_lower_level.Connection establishConnection() {
+    public EndPointConnection establishConnection() {
         try {
             return establishedConnection.take();
         } catch (InterruptedException e) {
@@ -223,5 +228,11 @@ public class ByteStream {
 
     public boolean isConnected() {
         return activeEndPoint != null;
+    }
+
+    public String getActiveEndPoint() {
+        synchronized (lock) {
+            return activeEndPoint;
+        }
     }
 }

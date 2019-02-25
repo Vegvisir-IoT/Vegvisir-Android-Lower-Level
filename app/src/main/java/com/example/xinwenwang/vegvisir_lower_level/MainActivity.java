@@ -12,6 +12,7 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.example.xinwenwang.vegvisir_lower_level.network.Network;
 import com.vegvisir.lower.datatype.proto.Payload;
 
 import java.util.concurrent.BlockingDeque;

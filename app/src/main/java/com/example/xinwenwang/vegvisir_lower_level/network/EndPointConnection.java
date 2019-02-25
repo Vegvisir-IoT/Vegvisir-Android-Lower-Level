@@ -1,21 +1,21 @@
-package com.example.xinwenwang.vegvisir_lower_level;
+package com.example.xinwenwang.vegvisir_lower_level.network;
 
 import android.content.Context;
 import android.support.annotation.NonNull;
 
+import com.example.xinwenwang.vegvisir_lower_level.Utils.Utils;
+import com.example.xinwenwang.vegvisir_lower_level.network.Exceptions.ConnectionNotAvailableException;
 import com.vegvisir.lower.datatype.proto.Identifier;
 import com.vegvisir.lower.datatype.proto.Payload;
 import com.vegvisir.lower.datatype.proto.Timestamp;
 
-import java.util.Date;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
-import java.util.function.Function;
 
 /**
  * Used for storing states for each connection
  */
-public class Connection {
+public class EndPointConnection {
 
     private String endPointId;
 
@@ -31,9 +31,9 @@ public class Connection {
 
     private boolean connected;
 
-    public Connection(@NonNull String endPointId,
-                      @NonNull Context context,
-                      @NonNull ByteStream stream) {
+    public EndPointConnection(@NonNull String endPointId,
+                              @NonNull Context context,
+                              @NonNull ByteStream stream) {
         this.endPointId = endPointId;
         this.stream = stream;
         this.recvQueue = new LinkedBlockingDeque<>();
@@ -41,8 +41,11 @@ public class Connection {
         wakeupTime = Utils.getTimeInMilliseconds();
     }
 
-    public void send(Payload payload) {
-        stream.send(endPointId, payload);
+    public void send(Payload payload) throws ConnectionNotAvailableException {
+        if (isConnected())
+            stream.send(endPointId, payload);
+        else
+            throw new ConnectionNotAvailableException();
     }
 
     public void onRecv(Payload payload) {
@@ -67,6 +70,9 @@ public class Connection {
 
     public void setConnected(boolean connected) {
         this.connected = connected;
+        if (this.connected == false) {
+            recvQueue.add(null);
+        }
     }
 
     public boolean isConnected() {
