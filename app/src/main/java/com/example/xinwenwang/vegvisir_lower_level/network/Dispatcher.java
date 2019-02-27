@@ -18,7 +18,8 @@ public class Dispatcher {
      * Register a handler for @type of payload.
      * @param type a identifier to be used in dispatch table.
      * @param handler a function takes payload as input.
-     * @return true if registered success; otherwise, false for duplicate register. Please redo with overwrite method.
+     * @return true if registered success; otherwise, false for duplicate register. Please redo
+     * with overwrite method.
      */
     public boolean registerHandler(String type, PayloadHandler handler) {
         boolean succ = dispatcher.putIfAbsent(type, handler) == null;

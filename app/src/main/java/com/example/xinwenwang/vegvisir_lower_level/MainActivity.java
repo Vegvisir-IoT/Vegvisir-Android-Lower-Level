@@ -10,9 +10,13 @@ import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 
+import com.example.xinwenwang.vegvisir_lower_level.network.Exceptions.ConnectionNotAvailableException;
 import com.example.xinwenwang.vegvisir_lower_level.network.Network;
+import com.example.xinwenwang.vegvisir_lower_level.network.PayloadHandler;
+import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 import com.vegvisir.lower.datatype.proto.Payload;
 
 import java.util.concurrent.BlockingDeque;
@@ -22,7 +26,6 @@ public class MainActivity extends AppCompatActivity {
     Network network;
     String remoteid;
     Thread updateThread;
-    BlockingDeque<String> tempBuf;
     Object lock = new Object();
 
     @Override
@@ -51,7 +54,9 @@ public class MainActivity extends AppCompatActivity {
         sendButton.setOnClickListener((v) -> {
             Log.d("SendBtn", "onCreate: click send");
             final EditText input = findViewById(R.id.editText);
-            boolean suc = sendPing(input.getText().toString());
+            final RadioGroup group = findViewById(R.id.RadioGroup1);
+            String id = Integer.toString(group.getCheckedRadioButtonId());
+            boolean suc = sendPing(id, input.getText().toString());
             if (!suc)
                 Log.d("SendBtn", "onCreate: msg "+input.getText().toString()+"sent failed");
             else
@@ -66,6 +71,8 @@ public class MainActivity extends AppCompatActivity {
             String incomingId;
             while(true) {
                 incomingId = network.onConnection();
+                if (incomingId == null)
+                    continue;
                 synchronized (lock) {
                     remoteid = incomingId;
                 }
@@ -73,21 +80,21 @@ public class MainActivity extends AppCompatActivity {
             }
         }).start();
 
-        if (updateThread == null)  {
-            updateThread = new Thread(
-                    () -> {
-                        while (true) {
-                            updateView();
-                        }
-                    }
-            );
-            updateThread.start();
-        }
+//        if (updateThread == null)  {
+//            updateThread = new Thread(
+//                    () -> {
+//                        while (true) {
+//                            updateView();
+//                        }
+//                    }
+//            );
+//            updateThread.start();
+//        }
     }
 
-    private void updateView() {
+    private void updateView(Payload payload) {
         if (remoteid != null) {
-            Payload payload = network.recv(remoteid);
+//            Payload payload = network.recv(remoteid);
             runOnUiThread(() -> {
                 TextView textView = new TextView(getApplicationContext());
                 textView.setText(payload.getInfo());
@@ -97,22 +104,72 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private boolean sendPing(String info) {
+    private boolean sendPing(String id, String info) {
         if (remoteid != null) {
-            network.send(remoteid, Payload.newBuilder().setInfo(info).build());
-            return true;
+            try {
+                network.send(remoteid, Payload.newBuilder().setType(id).setInfo(info).build());
+                return true;
+            } catch (ConnectionNotAvailableException ex) {
+                updateBanner("Connection Lost");
+                return false;
+            }
         } else {
             updateBanner("No Peer Connected");
             return false;
         }
     }
 
+    /**
+     * Instantiate a new Google nearby network
+     * @return
+     */
     private synchronized Network getNetwork() {
         if (network == null)
             network = new Network(this.getApplicationContext(), "PingPong");
+        PayloadHandler echo1 = new PayloadHandler((data) -> {
+           updateBanner("Type "+data.second.getType()+": "+"Receiving Call from " + data.first + "\nEcho input " +
+                           data.second.getInfo());
+           try {
+               network.send(Payload.newBuilder(data.second).setType("print").build());
+           } catch (ConnectionNotAvailableException ex) {
+               updateBanner("Connection Lost, Echo Failed");
+           }
+        });
+        PayloadHandler echo2 = new PayloadHandler((data) -> {
+            updateBanner("Type "+data.second.getType()+": "+"Receiving Call from " + data.first + "\nReverse input " +
+                    data.second.getInfo());
+            try {
+                StringBuffer buffer = new StringBuffer(data.second.getInfo());
+                Payload ret = Payload.newBuilder(data.second).setType("print").setInfo(buffer.reverse().toString()).build();
+                network.send(ret);
+            } catch (ConnectionNotAvailableException ex) {
+                updateBanner("Connection Lost, Echo Failed");
+            }
+        });
+        PayloadHandler echo3 = new PayloadHandler((data) -> {
+            updateBanner("Type "+data.second.getType()+": "+"Receiving Call from " + data.first + "\nUppercase input " +
+                    data.second.getInfo());
+            try {
+                Payload ret = Payload.newBuilder(data.second).setType("print").setInfo(data.second.getInfo().toUpperCase()).build();
+                network.send(ret);
+            } catch (ConnectionNotAvailableException ex) {
+                updateBanner("Connection Lost, Echo Failed");
+            }
+        });
+        PayloadHandler print1 = new PayloadHandler((data) -> {
+            updateView(data.second);
+        });
+        network.registerHandler("1", echo1);
+        network.registerHandler("2", echo2);
+        network.registerHandler("3", echo3);
+        network.registerHandler("print", print1);
         return network;
     }
 
+    /**
+     * Update upper banner with given text
+     * @param info
+     */
     private synchronized void updateBanner(String info) {
         TextView banner =  findViewById(R.id.Banner);
         runOnUiThread(() -> {
@@ -125,6 +182,9 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    /**
+     * Periodically check whether this device is connected to another device. If peer is lost, update the banner.
+     */
     private void checkConnection() {
         new Thread(() -> {
             while(true) {

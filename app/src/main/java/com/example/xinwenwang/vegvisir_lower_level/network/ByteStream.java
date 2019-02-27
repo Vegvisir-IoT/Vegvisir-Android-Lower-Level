@@ -53,6 +53,8 @@ public class ByteStream {
 
     private ByteStream self;
 
+    private static final boolean ENABLE_GOOGLE_NEARBY = false;
+
 
     /* Callbacks for receiving payloads */
     private final PayloadCallback payloadCallback = new PayloadCallback() {
@@ -64,7 +66,8 @@ public class ByteStream {
         }
 
         @Override
-        public void onPayloadTransferUpdate(@NonNull String endPointId, @NonNull PayloadTransferUpdate payloadTransferUpdate) {
+        public void onPayloadTransferUpdate(@NonNull String endPointId, @NonNull
+                PayloadTransferUpdate payloadTransferUpdate) {
 
         }
     };
@@ -72,7 +75,8 @@ public class ByteStream {
     /* Callbacks for finding other devices */
     private final EndpointDiscoveryCallback endpointDiscoveryCallback = new EndpointDiscoveryCallback() {
         @Override
-        public void onEndpointFound(@NonNull String endPoint, @NonNull DiscoveredEndpointInfo discoveredEndpointInfo) {
+        public void onEndpointFound(@NonNull String endPoint, @NonNull DiscoveredEndpointInfo
+                discoveredEndpointInfo) {
             if (discoveredEndpointInfo.getServiceId().equals(SERVICE_ID) &&
                     (!connections.containsKey(endPoint) || (connections.containsKey(endPoint) &&
                     connections.get(endPoint).isWakeup() && !connections.get(endPoint).isConnected()))) {
@@ -191,14 +195,20 @@ public class ByteStream {
     }
 
     public Task<Void> send(String dest, com.vegvisir.lower.datatype.proto.Payload payload) {
-        InputStream stream = new ByteArrayInputStream(payload.toByteArray());
-        Task<Void> task = client.sendPayload(dest, Payload.fromStream(stream));
-        return task;
+        if (ENABLE_GOOGLE_NEARBY) {
+            InputStream stream = new ByteArrayInputStream(payload.toByteArray());
+            Task<Void> task = client.sendPayload(dest, Payload.fromStream(stream));
+            return task;
+        } else {
+            connections.get(dest).onRecv(payload);
+            return null;
+        }
     }
 
     public void recv(String remoteId, Payload payload) {
         try {
-            com.vegvisir.lower.datatype.proto.Payload arrivedData = com.vegvisir.lower.datatype.proto.Payload.parseFrom(payload.asStream().asInputStream());
+            com.vegvisir.lower.datatype.proto.Payload arrivedData = com.vegvisir.lower.datatype
+                    .proto.Payload.parseFrom(payload.asStream().asInputStream());
             connections.get(remoteId).onRecv(arrivedData);
         } catch (InvalidProtocolBufferException e) {
 
@@ -216,8 +226,18 @@ public class ByteStream {
     }
 
     public void start() {
-        startAdvertising();
-        startDiscovering();
+        if (ENABLE_GOOGLE_NEARBY) {
+            startAdvertising();
+            startDiscovering();
+        } else {
+            String endPoint = "testConn";
+            connections.putIfAbsent(endPoint, new
+                    EndPointConnection(endPoint,
+                    appContext,
+                    self));
+            activeEndPoint = endPoint;
+            establishedConnection.add(connections.get(activeEndPoint));
+        }
     }
 
     public void pause() {

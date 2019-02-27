@@ -1,6 +1,7 @@
 package com.example.xinwenwang.vegvisir_lower_level.network;
 
-import android.util.Pair;
+import android.util.Log;
+import android.support.v4.util.Pair;
 
 import com.example.xinwenwang.vegvisir_lower_level.network.Exceptions.HandlerAlreadyExistsException;
 import com.example.xinwenwang.vegvisir_lower_level.network.Exceptions.HandlerNotRegisteredException;
@@ -14,12 +15,17 @@ import java.util.function.Function;
 public class PayloadHandler implements Runnable {
 
     private BlockingDeque<Pair<String, Payload>> payloads;
-    private Function<Pair<String, Payload>, Void> handler;
+    private Handler handler;
     private Object handlerLock = new Object();
     private Thread runningThread;
 
     public PayloadHandler() {
         this.payloads = new LinkedBlockingDeque<>();
+    }
+
+    public PayloadHandler(Handler handler) {
+        this();
+        this.handler = handler;
     }
 
     public void onNewPayload(String remoteId, Payload payload) {
@@ -33,7 +39,7 @@ public class PayloadHandler implements Runnable {
         return payloads.take();
     }
 
-    public void setRecvHandler(Function<Pair<String, Payload>, Void> handler) {
+    public void setRecvHandler(Handler handler) {
         synchronized (handlerLock) {
             this.handler = handler;
             if (runningThread != null) {
@@ -65,7 +71,7 @@ public class PayloadHandler implements Runnable {
                 Pair<String, Payload> input = payloads.take();
                 synchronized (handlerLock) {
                     if (handler != null) {
-                        handler.apply(input);
+                        handler.handle(input);
                     } else {
                         payloads.addFirst(input);
                     }
@@ -82,5 +88,9 @@ public class PayloadHandler implements Runnable {
            handler = new PayloadHandler();
        }
 
+    }
+
+    public interface Handler {
+        void handle(Pair<String, Payload> data);
     }
 }

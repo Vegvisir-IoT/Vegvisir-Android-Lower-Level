@@ -10,6 +10,8 @@ import com.example.xinwenwang.vegvisir_lower_level.network.Exceptions.HandlerNot
 import com.vegvisir.lower.datatype.proto.Payload;
 
 import java.util.HashMap;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.function.Function;
 
 /**
@@ -21,23 +23,34 @@ public class Network {
     private ByteStream byteStream;
     private Dispatcher dispatcher;
     private Thread pollingThread;
+    private BlockingDeque<String> activeConnection;
 
 
     public Network(Context context, String advisingID) {
         endPoints = new HashMap<>();
         byteStream = new ByteStream(context, advisingID);
         dispatcher = new Dispatcher();
+        activeConnection = new LinkedBlockingDeque<>(1);
         byteStream.start();
+        startDispatcher();
+    }
+
+    /**
+     * Start dispatching arrived payload by running a separate polling thread whose job is
+     * keeping blocking reading input from current connection.
+     */
+    private void startDispatcher() {
         pollingThread = new Thread(() -> {
             for (;;) {
-                String remoteId = onConnection();
+                String remoteId = waitingConnection();
+                activeConnection.add(remoteId);
                 EndPointConnection connection = byteStream.getConnectionByID(remoteId);
                 while (connection.isConnected()) {
                     try {
                         Payload payload = connection.blockingRecv();
-                        if (!connection.isConnected())
+                        if (payload == null)
                             break;
-                        else if(payload != null)
+                        else
                             dispatcher.dispatch(remoteId, payload);
                     } catch (InterruptedException ex) {
 
@@ -55,6 +68,14 @@ public class Network {
      * @return a id for the incoming connection
      */
     public String onConnection() {
+        try {
+            return activeConnection.take();
+        } catch (InterruptedException ex) {
+            return null;
+        }
+    }
+
+    private String waitingConnection() {
         return byteStream.establishConnection().getEndPointId();
     }
 
@@ -115,5 +136,17 @@ public class Network {
 
     public String getActiveRemoteID() {
         return byteStream.getActiveEndPoint();
+    }
+
+    /**
+     * Register a RPC @handler for given @id. There should be only one handler for a particular RPC id. If RPC id has
+     * been associated with another handler. This will return false. Use PayloadHandler setRecvHandler() function to
+     * update handler instead.
+     * @param id
+     * @param handler
+     * @return true if register successfully
+     */
+    public boolean registerHandler(String id, PayloadHandler handler) {
+        return dispatcher.registerHandler(id, handler);
     }
 }
