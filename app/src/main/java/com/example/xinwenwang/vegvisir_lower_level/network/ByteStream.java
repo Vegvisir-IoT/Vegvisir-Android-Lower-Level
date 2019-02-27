@@ -236,6 +236,7 @@ public class ByteStream {
                     appContext,
                     self));
             activeEndPoint = endPoint;
+            connections.get(activeEndPoint).setConnected(true);
             establishedConnection.add(connections.get(activeEndPoint));
         }
     }

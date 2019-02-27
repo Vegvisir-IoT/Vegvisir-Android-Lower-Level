@@ -10,6 +10,7 @@ import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 
@@ -55,8 +56,21 @@ public class MainActivity extends AppCompatActivity {
             Log.d("SendBtn", "onCreate: click send");
             final EditText input = findViewById(R.id.editText);
             final RadioGroup group = findViewById(R.id.RadioGroup1);
-            String id = Integer.toString(group.getCheckedRadioButtonId());
-            boolean suc = sendPing(id, input.getText().toString());
+            String id;
+            switch (group.getCheckedRadioButtonId()) {
+                case R.id.radioButton1:
+                    id = "echo";
+                    break;
+                case R.id.radioButton2:
+                    id = "reverse";
+                    break;
+                case R.id.radioButton3:
+                    id = "uppercase";
+                    break;
+                default:
+                    id = "print";
+            }
+            boolean suc =   sendPing(id, input.getText().toString());
             if (!suc)
                 Log.d("SendBtn", "onCreate: msg "+input.getText().toString()+"sent failed");
             else
@@ -159,9 +173,9 @@ public class MainActivity extends AppCompatActivity {
         PayloadHandler print1 = new PayloadHandler((data) -> {
             updateView(data.second);
         });
-        network.registerHandler("1", echo1);
-        network.registerHandler("2", echo2);
-        network.registerHandler("3", echo3);
+        network.registerHandler("echo", echo1);
+        network.registerHandler("reverse", echo2);
+        network.registerHandler("uppercase", echo3);
         network.registerHandler("print", print1);
         return network;
     }
