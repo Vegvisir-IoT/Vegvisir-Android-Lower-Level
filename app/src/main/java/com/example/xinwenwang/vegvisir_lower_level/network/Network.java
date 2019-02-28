@@ -4,8 +4,6 @@ import android.content.Context;
 import android.support.annotation.NonNull;
 import android.util.Log;
 
-import com.example.xinwenwang.vegvisir_lower_level.network.ByteStream;
-import com.example.xinwenwang.vegvisir_lower_level.network.EndPointConnection;
 import com.example.xinwenwang.vegvisir_lower_level.network.Exceptions.ConnectionNotAvailableException;
 import com.example.xinwenwang.vegvisir_lower_level.network.Exceptions.HandlerNotRegisteredException;
 import com.vegvisir.lower.datatype.proto.Payload;

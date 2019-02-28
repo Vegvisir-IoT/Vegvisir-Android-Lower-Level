@@ -194,6 +194,12 @@ public class ByteStream {
                         });
     }
 
+    /**
+     * Send payload to remote device
+     * @param dest
+     * @param payload
+     * @return
+     */
     public Task<Void> send(String dest, com.vegvisir.lower.datatype.proto.Payload payload) {
         if (ENABLE_GOOGLE_NEARBY) {
             InputStream stream = new ByteArrayInputStream(payload.toByteArray());
@@ -205,6 +211,11 @@ public class ByteStream {
         }
     }
 
+    /**
+     * Receive payload from specific remote device.
+     * @param remoteId
+     * @param payload
+     */
     public void recv(String remoteId, Payload payload) {
         try {
             com.vegvisir.lower.datatype.proto.Payload arrivedData = com.vegvisir.lower.datatype
@@ -217,6 +228,10 @@ public class ByteStream {
         }
     }
 
+    /**
+     * Waiting for new connection available.
+     * @return
+     */
     public EndPointConnection establishConnection() {
         try {
             return establishedConnection.take();
@@ -225,6 +240,9 @@ public class ByteStream {
         }
     }
 
+    /**
+     * Start google nearby broadcast.
+     */
     public void start() {
         if (ENABLE_GOOGLE_NEARBY) {
             startAdvertising();

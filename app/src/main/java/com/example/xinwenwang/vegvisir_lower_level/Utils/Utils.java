@@ -1,13 +1,9 @@
 package com.example.xinwenwang.vegvisir_lower_level.Utils;
 
-import com.google.protobuf.ByteString;
-import com.google.protobuf.MessageLite;
-import com.vegvisir.lower.datatype.proto.Location;
 import com.vegvisir.lower.datatype.proto.LocationRequestResponse;
 import com.vegvisir.lower.datatype.proto.Payload;
 import com.vegvisir.lower.datatype.proto.Timestamp;
 
-import java.security.Signature;
 import java.util.Date;
 
 public class Utils {

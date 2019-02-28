@@ -1,16 +1,12 @@
 package com.example.xinwenwang.vegvisir_lower_level.network;
 
-import android.util.Log;
 import android.support.v4.util.Pair;
 
 import com.example.xinwenwang.vegvisir_lower_level.network.Exceptions.HandlerAlreadyExistsException;
-import com.example.xinwenwang.vegvisir_lower_level.network.Exceptions.HandlerNotRegisteredException;
 import com.vegvisir.lower.datatype.proto.Payload;
 
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 
 public class PayloadHandler implements Runnable {
 
@@ -23,15 +19,25 @@ public class PayloadHandler implements Runnable {
         this.payloads = new LinkedBlockingDeque<>();
     }
 
+    /**
+     * Instantiate a payload handler with given handler function.
+     * @param handler a method to be called when payload available.
+     */
     public PayloadHandler(Handler handler) {
         this();
         this.handler = handler;
     }
 
+    /**
+     * Push new payload to the receiving queue.
+     * @param remoteId who sent this payload
+     * @param payload
+     */
     public void onNewPayload(String remoteId, Payload payload) {
         payloads.add(new Pair<>(remoteId, payload));
     }
 
+    @Deprecated
     public Pair<String, Payload> blockingRecv() throws InterruptedException, HandlerAlreadyExistsException {
         if (handler != null) {
             throw new HandlerAlreadyExistsException();
@@ -39,6 +45,11 @@ public class PayloadHandler implements Runnable {
         return payloads.take();
     }
 
+
+    /**
+     * Overwrite handler with a new one.
+     * @param handler
+     */
     public void setRecvHandler(Handler handler) {
         synchronized (handlerLock) {
             this.handler = handler;
@@ -48,6 +59,9 @@ public class PayloadHandler implements Runnable {
         }
     }
 
+    /**
+     * Remove a payload handler
+     */
     public void removeRecvHandler() {
         synchronized (handlerLock) {
             this.handler = null;
@@ -79,6 +93,7 @@ public class PayloadHandler implements Runnable {
             } catch (InterruptedException ex) {}
         }
     }
+
 
     class Builder {
 

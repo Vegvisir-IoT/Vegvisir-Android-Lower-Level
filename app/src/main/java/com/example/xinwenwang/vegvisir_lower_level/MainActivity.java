@@ -10,17 +10,13 @@ import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 
 import com.example.xinwenwang.vegvisir_lower_level.network.Exceptions.ConnectionNotAvailableException;
 import com.example.xinwenwang.vegvisir_lower_level.network.Network;
 import com.example.xinwenwang.vegvisir_lower_level.network.PayloadHandler;
-import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 import com.vegvisir.lower.datatype.proto.Payload;
-
-import java.util.concurrent.BlockingDeque;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -78,6 +74,9 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Initialize the network module.
+     */
     private void networkInit() {
         getNetwork();
 
@@ -93,19 +92,12 @@ public class MainActivity extends AppCompatActivity {
                 updateBanner("New Peer Connected: " + remoteid);
             }
         }).start();
-
-//        if (updateThread == null)  {
-//            updateThread = new Thread(
-//                    () -> {
-//                        while (true) {
-//                            updateView();
-//                        }
-//                    }
-//            );
-//            updateThread.start();
-//        }
     }
 
+    /**
+     * Update view with new message
+     * @param payload a Payload contains messages to be shown on the screen.
+     */
     private void updateView(Payload payload) {
         if (remoteid != null) {
 //            Payload payload = network.recv(remoteid);
@@ -118,6 +110,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Sending a ping message.
+     * @param id the remote id
+     * @param info the message to be sent.
+     * @return true if sending successfully.
+     */
     private boolean sendPing(String id, String info) {
         if (remoteid != null) {
             try {

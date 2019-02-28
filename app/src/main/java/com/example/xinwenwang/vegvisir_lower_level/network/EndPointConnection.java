@@ -41,6 +41,11 @@ public class EndPointConnection {
         wakeupTime = Utils.getTimeInMilliseconds();
     }
 
+    /**
+     * Send @payload to remote device.
+     * @param payload
+     * @throws ConnectionNotAvailableException
+     */
     public void send(Payload payload) throws ConnectionNotAvailableException {
         if (isConnected())
             stream.send(endPointId, payload);
@@ -48,22 +53,39 @@ public class EndPointConnection {
             throw new ConnectionNotAvailableException();
     }
 
+    /**
+     * Save new payload to receiving queue.
+     * @param payload
+     */
     public void onRecv(Payload payload) {
         recvQueue.push(payload);
     }
 
+    /**
+     * Wait until next payload available for this connection.
+     * @return the arrived payload.
+     * @throws InterruptedException
+     */
     public Payload blockingRecv() throws InterruptedException {
         return recvQueue.take();
     }
 
+    @Deprecated
     public Payload recv() {
         return recvQueue.remove();
     }
 
+    /**
+     * @return whether this connection is ignored or not.
+     */
     public boolean isWakeup() {
         return Utils.getTimeInMilliseconds() > wakeupTime;
     }
 
+    /**
+     * Ignore any connections from this endpoint.
+     * @param duration amount of time in milliseconds.
+     */
     public void ignore(Long duration) {
         this.wakeupTime = duration + Utils.getTimeInMilliseconds();
     }
@@ -75,10 +97,14 @@ public class EndPointConnection {
         }
     }
 
+    /**
+     * @return whether this connection is live.
+     */
     public boolean isConnected() {
         return connected;
     }
 
+    @Deprecated
     public com.vegvisir.lower.datatype.proto.Connection toProtoConnection() {
         return com.vegvisir.lower.datatype.proto.Connection.newBuilder()
                 .setRemoteId(Identifier.newBuilder().setName(endPointId).build())
