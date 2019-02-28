@@ -53,7 +53,7 @@ public class ByteStream {
 
     private ByteStream self;
 
-    private static final boolean ENABLE_GOOGLE_NEARBY = false;
+    private static final boolean ENABLE_GOOGLE_NEARBY = true;
 
 
     /* Callbacks for receiving payloads */

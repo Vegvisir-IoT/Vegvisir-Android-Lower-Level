@@ -1,6 +1,7 @@
 package com.example.xinwenwang.vegvisir_lower_level.network;
 
 import android.content.Context;
+import android.support.annotation.NonNull;
 import android.util.Log;
 
 import com.example.xinwenwang.vegvisir_lower_level.network.ByteStream;
@@ -48,7 +49,7 @@ public class Network {
                 while (connection.isConnected()) {
                     try {
                         Payload payload = connection.blockingRecv();
-                        if (payload == null)
+                        if (payload.getType() == null)
                             break;
                         else
                             dispatcher.dispatch(remoteId, payload);
@@ -146,7 +147,7 @@ public class Network {
      * @param handler
      * @return true if register successfully
      */
-    public boolean registerHandler(String id, PayloadHandler handler) {
+    public boolean registerHandler(@NonNull String id, @NonNull PayloadHandler handler) {
         return dispatcher.registerHandler(id, handler);
     }
 }

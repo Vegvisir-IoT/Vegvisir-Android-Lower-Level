@@ -71,7 +71,7 @@ public class EndPointConnection {
     public void setConnected(boolean connected) {
         this.connected = connected;
         if (this.connected == false) {
-            recvQueue.add(null);
+            recvQueue.add(Payload.newBuilder().build());
         }
     }
 
