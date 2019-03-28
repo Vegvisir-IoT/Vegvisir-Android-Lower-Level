@@ -3,7 +3,7 @@ package com.vegvisir.vegvisir_lower_level.network;
 import android.content.Context;
 import android.support.annotation.NonNull;
 
-import com.vegvisir.vegvisir_lower_level.Utils.Utils;
+import com.vegvisir.vegvisir_lower_level.utils.Utils;
 import com.vegvisir.vegvisir_lower_level.network.Exceptions.ConnectionNotAvailableException;
 import com.vegvisir.lower.datatype.proto.Identifier;
 import com.vegvisir.lower.datatype.proto.Payload;

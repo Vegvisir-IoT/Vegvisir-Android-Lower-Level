@@ -1,4 +1,4 @@
-package com.vegvisir.vegvisir_lower_level.Utils;
+package com.vegvisir.vegvisir_lower_level.utils;
 
 import com.vegvisir.lower.datatype.proto.LocationRequestResponse;
 import com.vegvisir.lower.datatype.proto.Payload;
