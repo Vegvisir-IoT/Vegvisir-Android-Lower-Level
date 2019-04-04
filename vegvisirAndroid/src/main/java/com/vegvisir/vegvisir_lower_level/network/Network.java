@@ -6,7 +6,7 @@ import android.util.Log;
 
 import com.vegvisir.vegvisir_lower_level.network.Exceptions.ConnectionNotAvailableException;
 import com.vegvisir.vegvisir_lower_level.network.Exceptions.HandlerNotRegisteredException;
-import com.vegvisir.lower.datatype.proto.Payload;
+import com.vegvisir.network.datatype.proto.Payload;
 
 import java.util.HashMap;
 import java.util.concurrent.BlockingDeque;

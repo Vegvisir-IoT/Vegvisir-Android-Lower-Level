@@ -5,9 +5,9 @@ import android.support.annotation.NonNull;
 
 import com.vegvisir.vegvisir_lower_level.utils.Utils;
 import com.vegvisir.vegvisir_lower_level.network.Exceptions.ConnectionNotAvailableException;
-import com.vegvisir.lower.datatype.proto.Identifier;
-import com.vegvisir.lower.datatype.proto.Payload;
-import com.vegvisir.lower.datatype.proto.Timestamp;
+import com.vegvisir.network.datatype.proto.Identifier;
+import com.vegvisir.network.datatype.proto.Payload;
+import com.vegvisir.common.datatype.proto.Timestamp;
 
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -105,8 +105,8 @@ public class EndPointConnection {
     }
 
     @Deprecated
-    public com.vegvisir.lower.datatype.proto.Connection toProtoConnection() {
-        return com.vegvisir.lower.datatype.proto.Connection.newBuilder()
+    public com.vegvisir.network.datatype.proto.Connection toProtoConnection() {
+        return com.vegvisir.network.datatype.proto.Connection.newBuilder()
                 .setRemoteId(Identifier.newBuilder().setName(endPointId).build())
                 .setWakeupTime(Timestamp.newBuilder().setUtcTime(wakeupTime).build())
                 .setConnectedTime(Timestamp.newBuilder().setElapsedTime(connectedTime).build())

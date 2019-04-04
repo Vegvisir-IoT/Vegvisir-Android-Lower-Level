@@ -3,7 +3,7 @@ package com.vegvisir.vegvisir_lower_level.network;
 import android.support.v4.util.Pair;
 
 import com.vegvisir.vegvisir_lower_level.network.Exceptions.HandlerAlreadyExistsException;
-import com.vegvisir.lower.datatype.proto.Payload;
+import com.vegvisir.network.datatype.proto.Payload;
 
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;

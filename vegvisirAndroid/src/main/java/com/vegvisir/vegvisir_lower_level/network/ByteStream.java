@@ -200,7 +200,7 @@ public class ByteStream {
      * @param payload
      * @return
      */
-    public Task<Void> send(String dest, com.vegvisir.lower.datatype.proto.Payload payload) {
+    public Task<Void> send(String dest, com.vegvisir.network.datatype.proto.Payload payload) {
         if (ENABLE_GOOGLE_NEARBY) {
             InputStream stream = new ByteArrayInputStream(payload.toByteArray());
             Task<Void> task = client.sendPayload(dest, Payload.fromStream(stream));
@@ -218,7 +218,7 @@ public class ByteStream {
      */
     public void recv(String remoteId, Payload payload) {
         try {
-            com.vegvisir.lower.datatype.proto.Payload arrivedData = com.vegvisir.lower.datatype
+            com.vegvisir.network.datatype.proto.Payload arrivedData = com.vegvisir.network.datatype
                     .proto.Payload.parseFrom(payload.asStream().asInputStream());
             connections.get(remoteId).onRecv(arrivedData);
         } catch (InvalidProtocolBufferException e) {

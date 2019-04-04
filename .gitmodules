@@ -1,0 +1,3 @@
+[submodule "deps/VegvisirDatatype"]
+	path = deps/VegvisirDatatype
+	url = git@github.com:JASONews/VegvisirDatatype.git
