@@ -2,6 +2,7 @@ package com.vegvisir.vegvisir_lower_level.network;
 
 import android.content.Context;
 import android.support.annotation.NonNull;
+import android.support.v4.util.Pair;
 import android.util.Log;
 
 import com.google.android.gms.nearby.Nearby;
@@ -25,7 +26,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * A stream connection in Google nearby
@@ -52,6 +55,8 @@ public class ByteStream {
     private String activeEndPoint;
 
     private ByteStream self;
+
+    private BlockingQueue<Pair<String, com.vegvisir.network.datatype.proto.Payload>> cachePayload;
 
     private static final boolean ENABLE_GOOGLE_NEARBY = true;
 
@@ -149,6 +154,7 @@ public class ByteStream {
         lock = new Object();
         establishedConnection = new LinkedBlockingDeque<>(1);
         connections = new HashMap<>();
+        cachePayload = new LinkedBlockingQueue<>();
         self = this;
     }
 
@@ -220,11 +226,24 @@ public class ByteStream {
         try {
             com.vegvisir.network.datatype.proto.Payload arrivedData = com.vegvisir.network.datatype
                     .proto.Payload.parseFrom(payload.asStream().asInputStream());
+            cachePayload.add(new Pair<>(remoteId, arrivedData));
             connections.get(remoteId).onRecv(arrivedData);
         } catch (InvalidProtocolBufferException e) {
 
         } catch (IOException ex) {
 
+        }
+    }
+
+    /**
+     * [BLOCKING] waiting until a new data arrived.
+     * @return
+     */
+    public Pair<String, com.vegvisir.network.datatype.proto.Payload> blockingRecv() {
+        try {
+            return cachePayload.take();
+        } catch (InterruptedException ex) {
+            return null;
         }
     }
 
