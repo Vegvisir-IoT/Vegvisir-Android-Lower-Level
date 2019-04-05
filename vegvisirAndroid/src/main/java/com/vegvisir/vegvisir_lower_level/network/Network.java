@@ -2,6 +2,7 @@ package com.vegvisir.vegvisir_lower_level.network;
 
 import android.content.Context;
 import android.support.annotation.NonNull;
+import android.support.v4.util.Pair;
 import android.util.Log;
 
 import com.vegvisir.vegvisir_lower_level.network.Exceptions.ConnectionNotAvailableException;
@@ -31,7 +32,7 @@ public class Network {
         dispatcher = new Dispatcher();
         activeConnection = new LinkedBlockingDeque<>(1);
         byteStream.start();
-        startDispatcher();
+//        startDispatcher();
     }
 
     /**
@@ -74,7 +75,15 @@ public class Network {
         }
     }
 
-    private String waitingConnection() {
+    /**
+     * [BLOCKING] waiting until get new data from remote side.
+     * @return a pair of <remote id, payload>
+     */
+    public Pair<String, Payload> waitingData() {
+        return byteStream.blockingRecv();
+    }
+
+    public String waitingConnection() {
         return byteStream.establishConnection().getEndPointId();
     }
 
