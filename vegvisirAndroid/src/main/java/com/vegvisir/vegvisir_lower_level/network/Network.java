@@ -157,4 +157,12 @@ public class Network {
     public boolean registerHandler(@NonNull String id, @NonNull PayloadHandler handler) {
         return dispatcher.registerHandler(id, handler);
     }
+
+    public void disconnect(String endpoint) {
+        byteStream.disconnect(endpoint);
+    }
+
+    public String getDisconnectedId() throws InterruptedException {
+        return byteStream.getDisconnectedId().take();
+    }
 }

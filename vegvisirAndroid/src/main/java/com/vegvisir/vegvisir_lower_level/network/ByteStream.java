@@ -25,6 +25,8 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -58,7 +60,15 @@ public class ByteStream {
 
     private BlockingQueue<Pair<String, com.vegvisir.network.datatype.proto.Payload>> cachePayload;
 
+    private BlockingQueue<String> disconnectedId;
+
+    private Set<String> nearbyEndpoints = new HashSet<>();
+
+    private boolean isDiscovering = false;
+
     private static final boolean ENABLE_GOOGLE_NEARBY = true;
+
+    private static final String TAG = ByteStream.class.getName();
 
 
     /* Callbacks for receiving payloads */
@@ -73,7 +83,6 @@ public class ByteStream {
         @Override
         public void onPayloadTransferUpdate(@NonNull String endPointId, @NonNull
                 PayloadTransferUpdate payloadTransferUpdate) {
-
         }
     };
 
@@ -82,17 +91,27 @@ public class ByteStream {
         @Override
         public void onEndpointFound(@NonNull String endPoint, @NonNull DiscoveredEndpointInfo
                 discoveredEndpointInfo) {
+            Log.i(TAG, "onEndpointFound: "+ discoveredEndpointInfo.getEndpointName() + "/" + endPoint);
+            if (discoveredEndpointInfo.getServiceId().equals(SERVICE_ID))
+                nearbyEndpoints.add(endPoint);
             if (discoveredEndpointInfo.getServiceId().equals(SERVICE_ID) &&
                     (!connections.containsKey(endPoint) || (connections.containsKey(endPoint) &&
                     connections.get(endPoint).isWakeup() && !connections.get(endPoint).isConnected()))) {
-                    client.requestConnection(advisingID, endPoint, connectionLifecycleCallback);
+                    Task<Void> requestTask = client.requestConnection(advisingID, endPoint, connectionLifecycleCallback);
+                requestTask.addOnFailureListener((t) -> {
+                    Log.e(TAG, "onEndpointFound: ", t);
+                    Log.d(TAG, "onEndpointFound: " + t.getMessage());
+                    if (t.getMessage().equals("8012: STATUS_ENDPOINT_IO_ERROR")) {
+                        restart();
+                    }
+                });
                 }
         }
 
         @Override
-        public void onEndpointLost(@NonNull String s) {
+        public void onEndpointLost(@NonNull String endpoint) {
             Log.d("INFO", "ENDPOINT LOST");
-
+            nearbyEndpoints.remove(endpoint);
         }
     };
 
@@ -100,14 +119,19 @@ public class ByteStream {
     private final ConnectionLifecycleCallback connectionLifecycleCallback = new ConnectionLifecycleCallback() {
         @Override
         public void onConnectionInitiated(@NonNull String endPoint, @NonNull ConnectionInfo connectionInfo) {
-            if (activeEndPoint != null)
+            Log.d(TAG, "onConnectionInitiated: Received Connection Request");
+            if (activeEndPoint != null) {
                 client.rejectConnection(endPoint);
+                Log.d(TAG, "onConnectionInitiated: Rejected request");
+            }
             else {
                 synchronized (lock) {
                     if (activeEndPoint == null) {
                         client.acceptConnection(endPoint, payloadCallback);
+                        Log.d(TAG, "onConnectionInitiated: Accepted request");
                     } else {
                         client.rejectConnection(endPoint);
+                        Log.d(TAG, "onConnectionInitiated: Rejected request");
                     }
                 }
             }
@@ -116,6 +140,8 @@ public class ByteStream {
 
         @Override
         public void onConnectionResult(@NonNull String endPoint, @NonNull ConnectionResolution connectionResolution) {
+
+            Log.d(TAG, "onConnectionResult: " + connectionResolution.getStatus().getStatusMessage());
 
             if (activeEndPoint != null)
                 return;
@@ -126,13 +152,18 @@ public class ByteStream {
                         activeEndPoint = endPoint;
                         client.stopDiscovery();
                         client.stopAdvertising();
+                        synchronized (this) {
+                            isDiscovering = false;
+                        }
                         connections.putIfAbsent(endPoint, new EndPointConnection(endPoint,
                                 appContext,
                                 self));
                         connections.get(endPoint).setConnected(true);
                         establishedConnection.push(connections.get(endPoint));
+                        Log.i(TAG, "onConnectionResult: Connection established!");
                     } else {
                         Log.i("Vegivsir-EndPointConnection", "connection failed");
+                        restart();
                     }
                 }
             }
@@ -140,8 +171,12 @@ public class ByteStream {
 
         @Override
         public void onDisconnected(@NonNull String endPoint) {
-            activeEndPoint = null;
-            connections.get(endPoint).setConnected(false);
+            synchronized (lock) {
+                activeEndPoint = null;
+                connections.get(endPoint).setConnected(false);
+                disconnectedId.add(endPoint);
+            }
+            Log.d(TAG, "disconnect: Disconnected with " + endPoint);
             start();
         }
     };
@@ -156,6 +191,7 @@ public class ByteStream {
         connections = new HashMap<>();
         cachePayload = new LinkedBlockingQueue<>();
         self = this;
+        disconnectedId = new LinkedBlockingQueue<>();
     }
 
     public EndPointConnection getConnectionByID(String id) {
@@ -179,7 +215,10 @@ public class ByteStream {
                             Log.d("INFO", "startDiscovering: failed");
                             e.printStackTrace();
                             // We were unable to start advertising.
-                        });
+                        })
+                .addOnCanceledListener(() -> {
+                    Log.d(TAG, "startDiscovering: startDiscovering Cancelled");
+                });
     }
 
     public void startAdvertising() {
@@ -197,7 +236,11 @@ public class ByteStream {
                             Log.d("INFO", "startAdvertising: failed");
                             e.printStackTrace();
                             // We were unable to start advertising.
-                        });
+                        })
+                .addOnCanceledListener(() -> {
+                    Log.d(TAG, "startAdvertising: startAdvertising: Cancelled");
+                })
+                ;
     }
 
     /**
@@ -264,8 +307,14 @@ public class ByteStream {
      */
     public void start() {
         if (ENABLE_GOOGLE_NEARBY) {
-            startAdvertising();
-            startDiscovering();
+            synchronized (this) {
+                if (isDiscovering)
+                    return;
+                client.stopAllEndpoints();
+                startAdvertising();
+                startDiscovering();
+                isDiscovering = true;
+            }
         } else {
             String endPoint = "testConn";
             connections.putIfAbsent(endPoint, new
@@ -278,10 +327,42 @@ public class ByteStream {
         }
     }
 
+    public Set<String> getNearbyEndpoints() {
+        return nearbyEndpoints;
+    }
+
+    /**
+     * Disconnect from particular endpoint.
+     * @param id
+     */
+    public void disconnect(String id) {
+        if (id.equals(getActiveEndPoint())) {
+            connections.get(id).waitUntilFlushAllData();
+//            client.disconnectFromEndpoint(id);
+            synchronized (lock) {
+                connections.get(id).setConnected(false);
+                disconnectedId.add(id);
+                activeEndPoint = null;
+                start();
+            }
+        }
+        Log.d(TAG, "disconnect: Disconnected with " + id);
+    }
+
     public void pause() {
         client.stopDiscovery();
         client.stopAdvertising();
         client.stopAllEndpoints();
+    }
+
+    private void restart() {
+        synchronized (this) {
+            isDiscovering = false;
+            client.stopDiscovery();
+            client.stopAdvertising();
+            start();
+            Log.d(TAG, "onEndpointFound: Restarted!");
+        }
     }
 
     public boolean isConnected() {
@@ -292,5 +373,9 @@ public class ByteStream {
         synchronized (lock) {
             return activeEndPoint;
         }
+    }
+
+    public BlockingQueue<String> getDisconnectedId() {
+        return disconnectedId;
     }
 }
